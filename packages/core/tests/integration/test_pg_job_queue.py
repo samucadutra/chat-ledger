@@ -275,3 +275,24 @@ def test_fail_without_retry_is_terminal(queue: PgJobQueue) -> None:
     assert after.state is JobState.FAILED
     assert after.attempts == 1
     assert after.finished_at is not None
+
+
+def test_requeue_recovers_jobs_of_stale_workers(db_conn: Connection) -> None:
+    queue = queue_for(db_conn.engine, lease_seconds=60, stale_owner_seconds=30).within(db_conn)
+    db_conn.execute(text("DELETE FROM worker_heartbeat"))
+    db_conn.execute(
+        text(
+            "INSERT INTO worker_heartbeat (worker_id, hostname, pid, git_sha, last_seen_at) VALUES "
+            "('dead', 'h', 1, 'unknown', now() - interval '45 seconds'), "
+            "('alive', 'h', 2, 'unknown', now())"
+        )
+    )
+    dead_job = queue.enqueue("noop")
+    live_job = queue.enqueue("noop")
+    assert queue.claim("dead") is not None
+    assert queue.claim("alive") is not None
+    assert queue.requeue_expired() == 1
+    dead_after = queue.get(dead_job.id)
+    assert dead_after.state is JobState.QUEUED
+    assert dead_after.last_error == "worker heartbeat lost (owner dead)"
+    assert queue.get(live_job.id).state is JobState.LEASED

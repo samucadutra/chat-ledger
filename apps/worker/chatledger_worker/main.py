@@ -32,6 +32,7 @@ def build_queue(settings: Settings) -> PgJobQueue:
         lease_seconds=settings.job_lease_seconds,
         max_attempts=settings.job_max_attempts,
         retry_backoff_seconds=settings.job_retry_backoff_seconds,
+        stale_owner_seconds=settings.worker_active_window_seconds,
     )
 
 
@@ -49,6 +50,8 @@ def main() -> int:
         lease_seconds=settings.job_lease_seconds,
         max_attempts=settings.job_max_attempts,
         retry_backoff_seconds=settings.job_retry_backoff_seconds,
+        # Recover jobs of crashed workers once their heartbeat goes stale.
+        stale_owner_seconds=settings.worker_active_window_seconds,
     )
     stop_event = threading.Event()
     loop = JobLoop(

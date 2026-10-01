@@ -85,6 +85,9 @@ def test_lease_renewed_during_long_job(clean_jobs: Engine) -> None:
     second = _loop(clean_jobs, "w-2", queue=short, sweep=0.1)
     t = threading.Thread(target=first.run_once)
     t.start()
+    leased_by = time.monotonic() + 3
+    while short.get(job.id).state is not JobState.LEASED and time.monotonic() < leased_by:
+        time.sleep(0.02)
     deadline = time.monotonic() + 3.5
     while time.monotonic() < deadline:
         second.run_once()

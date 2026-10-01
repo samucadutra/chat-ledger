@@ -1,0 +1,74 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python:
+    name: python (lint, typecheck, test + coverage gate)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: chatledger
+          POSTGRES_PASSWORD: chatledger
+          POSTGRES_DB: chatledger_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U chatledger -d chatledger_test"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 30
+    env:
+      TEST_DATABASE_URL: postgresql+psycopg://chatledger:chatledger@localhost:5432/chatledger_test
+      TZ: UTC
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - name: Install Python 3.12
+        run: uv python install 3.12
+      - name: Install dependencies
+        run: uv sync --frozen
+      - name: Lint (ruff, ruff format, import-linter)
+        run: make lint-py
+      - name: Typecheck (mypy --strict)
+        run: make typecheck-py
+      - name: Test (pytest + per-segment coverage gate)
+        run: make test
+
+  web:
+    name: web (eslint, tsc, vitest, next build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: apps/web/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: apps/web/pnpm-lock.yaml
+      - name: Install dependencies
+        working-directory: apps/web
+        run: pnpm install --frozen-lockfile
+      - name: Lint (eslint)
+        run: make lint-web
+      - name: Typecheck (tsc --noEmit)
+        run: make typecheck-web
+      - name: Test (vitest)
+        run: make web-test
+      - name: Build (next build)
+        run: make web-build

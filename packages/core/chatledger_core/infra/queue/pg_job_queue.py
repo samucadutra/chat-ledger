@@ -7,6 +7,9 @@ Semantics (spec §5 "Queue port semantics"):
   while ``attempts < max_attempts``; otherwise the job becomes ``failed``.
 * On any transition out of ``leased`` the lease deadline is cleared, while
   ``lease_owner`` is kept as the *last* owner for observability.
+* With ``stale_owner_seconds`` set, ``requeue_expired`` also recovers leases
+  held by workers whose heartbeat is older than that window (a crashed worker
+  is detected well before its lease deadline).
 """
 
 from __future__ import annotations
@@ -72,12 +75,14 @@ class PgJobQueue(TransactionalAdapter):
         lease_seconds: float = 60,
         max_attempts: int = 3,
         retry_backoff_seconds: float = 5,
+        stale_owner_seconds: float | None = None,
         conn: Connection | None = None,
     ) -> None:
         super().__init__(engine, conn)
         self.lease_seconds = lease_seconds
         self.max_attempts = max_attempts
         self.retry_backoff_seconds = retry_backoff_seconds
+        self.stale_owner_seconds = stale_owner_seconds
 
     def within(self, conn: Connection) -> PgJobQueue:
         """Return a queue bound to the caller's transaction (transactional enqueue)."""
@@ -86,6 +91,7 @@ class PgJobQueue(TransactionalAdapter):
             lease_seconds=self.lease_seconds,
             max_attempts=self.max_attempts,
             retry_backoff_seconds=self.retry_backoff_seconds,
+            stale_owner_seconds=self.stale_owner_seconds,
             conn=conn,
         )
 
@@ -205,15 +211,26 @@ class PgJobQueue(TransactionalAdapter):
         return row is not None
 
     def requeue_expired(self) -> int:
+        params: dict[str, Any] = {"backoff": self.retry_backoff_seconds, "retry": True}
+        stale_clause = ""
+        if self.stale_owner_seconds is not None:
+            stale_clause = """
+                    OR lease_owner IN (
+                        SELECT worker_id FROM worker_heartbeat
+                        WHERE last_seen_at < now() - make_interval(secs => :stale)
+                    )"""
+            params["stale"] = self.stale_owner_seconds
         stmt = text(
             f"""
             WITH expired AS (
                 SELECT id FROM job
-                WHERE state = 'leased' AND lease_expires_at < now()
+                WHERE state = 'leased' AND (lease_expires_at < now(){stale_clause})
                 FOR UPDATE SKIP LOCKED
             )
             UPDATE job SET
-                last_error = 'lease expired (owner ' || job.lease_owner || ')',
+                last_error = CASE WHEN job.lease_expires_at < now()
+                    THEN 'lease expired (owner ' || job.lease_owner || ')'
+                    ELSE 'worker heartbeat lost (owner ' || job.lease_owner || ')' END,
                 {_RETRY_SET}
             FROM expired
             WHERE job.id = expired.id
@@ -221,7 +238,7 @@ class PgJobQueue(TransactionalAdapter):
             """
         )
         with self._tx() as conn:
-            rows = conn.execute(stmt, {"backoff": self.retry_backoff_seconds, "retry": True}).all()
+            rows = conn.execute(stmt, params).all()
         return len(rows)
 
     def get(self, job_id: UUID) -> Job:

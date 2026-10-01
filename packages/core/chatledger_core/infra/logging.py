@@ -43,7 +43,8 @@ def configure_logging(level: str = "INFO", *, service: str = "chatledger") -> No
     root = logging.getLogger()
     root.handlers = [handler]
     root.setLevel(numeric)
-    for name in ("uvicorn", "uvicorn.error", "uvicorn.access"):
+    # uvicorn.access is left alone: the API logs one structured line per request itself.
+    for name in ("uvicorn", "uvicorn.error"):
         lg = logging.getLogger(name)
         lg.handlers = []
         lg.propagate = True

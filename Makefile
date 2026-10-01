@@ -84,5 +84,6 @@ web-build: ## next build
 migrate: ## Apply Alembic migrations to DATABASE_URL
 	$(UV) run alembic upgrade head
 
-gen-api-types: ## Regenerate the web API types from the running API's OpenAPI schema
-	cd $(WEB_DIR) && $(PNPM) run gen:api
+gen-api-types: ## Regenerate the web API client types from the API's OpenAPI schema
+	$(UV) run python -m chatledger_api.openapi > $(WEB_DIR)/openapi.json
+	cd $(WEB_DIR) && OPENAPI_URL=openapi.json $(PNPM) run gen:api

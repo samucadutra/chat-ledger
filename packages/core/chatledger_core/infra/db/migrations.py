@@ -13,9 +13,6 @@ def alembic_config(url: str | None = None) -> Config:
     cfg = Config()
     cfg.set_main_option("path_separator", "os")
     cfg.set_main_option("script_location", str(files("chatledger_core") / "migrations"))
-    cfg.set_main_option(
-        "version_locations", str(files("chatledger_core") / "migrations" / "versions")
-    )
     if url:
         cfg.set_main_option("sqlalchemy.url", url.replace("%", "%%"))
     cfg.attributes["configure_logger"] = False

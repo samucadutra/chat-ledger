@@ -1,0 +1,142 @@
+@import "tailwindcss";
+
+/*
+ * ChatLedger design tokens — "evidence ledger".
+ * Paper-grey surfaces, ink text, one oxblood accent, IBM Plex Sans/Mono,
+ * a 4px spacing grid and hairline rules. Components consume the CSS
+ * variables directly or through the Tailwind @theme mapping below.
+ */
+:root {
+  /* Surfaces */
+  --cl-paper: #f3f1ec;
+  --cl-paper-raised: #fbfaf7;
+  --cl-paper-sunken: #e9e5dd;
+  /* Ink */
+  --cl-ink: #1c1a17;
+  --cl-ink-muted: #57524a;
+  --cl-ink-faint: #8a847a;
+  /* Rules */
+  --cl-rule: #d6d0c4;
+  --cl-rule-strong: #b3ab9b;
+  /* Accent (oxblood) — the only chromatic colour */
+  --cl-accent: #7a1f2b;
+  --cl-accent-hover: #631822;
+  --cl-accent-ink: #fffaf7;
+  --cl-accent-wash: #f2e4e3;
+  /* Focus */
+  --cl-focus: #7a1f2b;
+
+  /* Type */
+  --cl-font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --cl-font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
+  --cl-text-xs: 0.6875rem; /* 11px — mono labels */
+  --cl-text-sm: 0.8125rem; /* 13px */
+  --cl-text-md: 0.875rem; /* 14px — body */
+  --cl-text-lg: 1.125rem; /* 18px */
+  --cl-text-xl: 1.5rem; /* 24px — page titles */
+
+  /* 4px grid */
+  --cl-space-1: 4px;
+  --cl-space-2: 8px;
+  --cl-space-3: 12px;
+  --cl-space-4: 16px;
+  --cl-space-6: 24px;
+  --cl-space-8: 32px;
+  --cl-space-12: 48px;
+
+  --cl-radius: 2px;
+  --cl-hairline: 1px solid var(--cl-rule);
+  --cl-shadow-pop: 0 1px 0 var(--cl-rule), 0 8px 24px -12px rgb(28 26 23 / 0.35);
+
+  --cl-sidebar-width: 232px;
+  --cl-header-height: 52px;
+}
+
+@theme inline {
+  --color-paper: var(--cl-paper);
+  --color-paper-raised: var(--cl-paper-raised);
+  --color-paper-sunken: var(--cl-paper-sunken);
+  --color-ink: var(--cl-ink);
+  --color-ink-muted: var(--cl-ink-muted);
+  --color-ink-faint: var(--cl-ink-faint);
+  --color-rule: var(--cl-rule);
+  --color-rule-strong: var(--cl-rule-strong);
+  --color-accent: var(--cl-accent);
+  --color-accent-hover: var(--cl-accent-hover);
+  --color-accent-ink: var(--cl-accent-ink);
+  --color-accent-wash: var(--cl-accent-wash);
+  --font-sans: var(--cl-font-sans);
+  --font-mono: var(--cl-font-mono);
+  --radius-sm: var(--cl-radius);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--cl-paper);
+  color: var(--cl-ink);
+  font-family: var(--cl-font-sans);
+  font-size: var(--cl-text-md);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+:focus-visible {
+  outline: 2px solid var(--cl-focus);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--cl-accent-wash);
+  color: var(--cl-ink);
+}
+
+code,
+kbd,
+samp {
+  font-family: var(--cl-font-mono);
+  font-size: 0.95em;
+}
+
+/* Mono "ledger" label used for eyebrows, metadata and column headers. */
+.cl-label {
+  font-family: var(--cl-font-mono);
+  font-size: var(--cl-text-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cl-ink-faint);
+}
+
+@keyframes cl-shimmer {
+  0% {
+    background-position: -200px 0;
+  }
+  100% {
+    background-position: 200px 0;
+  }
+}
+
+@keyframes cl-slide-in {
+  from {
+    transform: translateY(8px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

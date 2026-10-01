@@ -1,3 +1,5 @@
-export default function Home() {
-  return <main>ChatLedger</main>;
+import { redirect } from "next/navigation";
+
+export default function Home(): never {
+  redirect("/matters");
 }
