@@ -79,8 +79,13 @@ def test_unknown_kind_fails_job(clean_jobs: Engine) -> None:
 
 
 def test_lease_renewed_during_long_job(clean_jobs: Engine) -> None:
-    short = queue_for(clean_jobs, lease_seconds=2)
-    job = short.enqueue("noop", {"sleep_seconds": 3})
+    """A job running longer than its lease keeps it through renewals.
+
+    Lease 5 s / renew 0.5 s / sleep 6 s: the margin tolerates wall-clock jumps
+    of the DB host (observed on WSL2), which a 2 s lease does not.
+    """
+    short = queue_for(clean_jobs, lease_seconds=5)
+    job = short.enqueue("noop", {"sleep_seconds": 6})
     first = _loop(clean_jobs, "w-1", queue=short, renew=0.5)
     second = _loop(clean_jobs, "w-2", queue=short, sweep=0.1)
     t = threading.Thread(target=first.run_once)
@@ -88,7 +93,7 @@ def test_lease_renewed_during_long_job(clean_jobs: Engine) -> None:
     leased_by = time.monotonic() + 3
     while short.get(job.id).state is not JobState.LEASED and time.monotonic() < leased_by:
         time.sleep(0.02)
-    deadline = time.monotonic() + 3.5
+    deadline = time.monotonic() + 6.5
     while time.monotonic() < deadline:
         second.run_once()
         time.sleep(0.2)
