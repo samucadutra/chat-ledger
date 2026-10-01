@@ -51,12 +51,14 @@ def row_to_job(row: RowMapping | Mapping[str, Any]) -> Job:
 
 
 # Shared retry/fail rule, applied to a row being taken out of ``leased``.
-_RETRY_SET = """
-    state = CASE WHEN job.attempts < job.max_attempts THEN 'queued' ELSE 'failed' END,
-    run_after = CASE WHEN job.attempts < job.max_attempts
+# ``:retry`` false forces a terminal failure regardless of remaining attempts.
+_CAN_RETRY = "(:retry AND job.attempts < job.max_attempts)"
+_RETRY_SET = f"""
+    state = CASE WHEN {_CAN_RETRY} THEN 'queued' ELSE 'failed' END,
+    run_after = CASE WHEN {_CAN_RETRY}
         THEN now() + make_interval(secs => :backoff * job.attempts)
         ELSE job.run_after END,
-    finished_at = CASE WHEN job.attempts < job.max_attempts THEN NULL ELSE now() END,
+    finished_at = CASE WHEN {_CAN_RETRY} THEN NULL ELSE now() END,
     lease_expires_at = NULL,
     updated_at = now()
 """
@@ -181,7 +183,7 @@ class PgJobQueue(TransactionalAdapter):
             row = conn.execute(stmt, {"id": job_id, "worker_id": worker_id}).one_or_none()
         return row is not None
 
-    def fail(self, job_id: UUID, worker_id: str, error: str) -> bool:
+    def fail(self, job_id: UUID, worker_id: str, error: str, *, retry: bool = True) -> bool:
         stmt = text(
             f"""
             UPDATE job SET last_error = :error, {_RETRY_SET}
@@ -197,6 +199,7 @@ class PgJobQueue(TransactionalAdapter):
                     "worker_id": worker_id,
                     "error": truncate_error(error),
                     "backoff": self.retry_backoff_seconds,
+                    "retry": retry,
                 },
             ).one_or_none()
         return row is not None
@@ -218,7 +221,7 @@ class PgJobQueue(TransactionalAdapter):
             """
         )
         with self._tx() as conn:
-            rows = conn.execute(stmt, {"backoff": self.retry_backoff_seconds}).all()
+            rows = conn.execute(stmt, {"backoff": self.retry_backoff_seconds, "retry": True}).all()
         return len(rows)
 
     def get(self, job_id: UUID) -> Job:

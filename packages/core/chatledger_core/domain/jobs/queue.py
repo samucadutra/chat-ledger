@@ -33,8 +33,12 @@ class JobQueue(Protocol):
         """Mark ``done``; ``False`` (no-op) when the lease was lost."""
         ...
 
-    def fail(self, job_id: UUID, worker_id: str, error: str) -> bool:
-        """Record a failure: requeue with backoff or mark ``failed`` when exhausted."""
+    def fail(self, job_id: UUID, worker_id: str, error: str, *, retry: bool = True) -> bool:
+        """Record a failure: requeue with backoff or mark ``failed`` when exhausted.
+
+        ``retry=False`` marks the job ``failed`` immediately (permanent errors such
+        as an unknown job kind). Returns ``False`` (no-op) when the lease was lost.
+        """
         ...
 
     def requeue_expired(self) -> int:

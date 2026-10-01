@@ -264,3 +264,14 @@ def test_concurrent_claim_many_jobs_no_duplicates(clean_jobs: Engine) -> None:
     counts = Counter(j.id for j in claimed)
     assert set(counts) == ids
     assert all(c == 1 for c in counts.values())
+
+
+def test_fail_without_retry_is_terminal(queue: PgJobQueue) -> None:
+    queue.enqueue("noop")
+    job = queue.claim("w-a")
+    assert job is not None
+    assert queue.fail(job.id, "w-a", "UNKNOWN_JOB_KIND", retry=False)
+    after = queue.get(job.id)
+    assert after.state is JobState.FAILED
+    assert after.attempts == 1
+    assert after.finished_at is not None
