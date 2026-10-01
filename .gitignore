@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.import_linter_cache/
+.coverage
+.coverage.*
+coverage.json
+htmlcov/
+*.egg-info/
+dist/
+build/
+
+# Node / web
+node_modules/
+apps/web/.next/
+apps/web/out/
+apps/web/coverage/
+apps/web/next-env.d.ts
+*.tsbuildinfo
+
+# Env
+.env
+.env.local
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/

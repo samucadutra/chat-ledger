@@ -1,0 +1,6 @@
+# Force LF everywhere: shell scripts and Makefiles run inside Linux containers.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff2 binary
