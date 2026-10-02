@@ -1,9 +1,9 @@
 import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/lib/api/client";
-import { UploadInterruptedError, type UploadOptions } from "@/features/intake/uploadCollection";
+import { UploadAbortedError, UploadInterruptedError, type UploadOptions } from "@/features/intake/uploadCollection";
 import { API_URL } from "../../../../../tests/mocks/handlers";
 import { server } from "../../../../../tests/mocks/server";
 import { ACME_ID, makeCollection, renderWithProviders } from "../../../../../tests/utils";
@@ -46,6 +46,11 @@ function choose(file: File) {
 }
 
 describe("Collections tab", () => {
+  afterEach(() => {
+    // TanStack Query's onlineManager is a module singleton that reacts to `offline` events.
+    window.dispatchEvent(new Event("online"));
+  });
+
   beforeEach(() => {
     upload.calls = 0;
     upload.abort.mockClear();
@@ -122,6 +127,33 @@ describe("Collections tab", () => {
     await userEvent.click(screen.getByRole("button", { name: "Retry" }));
     expect(upload.calls).toBe(2);
     expect(await screen.findByRole("progressbar")).toBeInTheDocument();
+  });
+
+  it("browser_going_offline_interrupts_the_upload_at_the_last_percent", async () => {
+    server.use(http.get(listUrl, () => HttpResponse.json({ items: [] })));
+    renderWithProviders(<CollectionsPage />);
+    await screen.findByText(/No collections yet/);
+    choose(zip("big.zip"));
+    await screen.findByText("big.zip");
+    act(() => upload.options?.onProgress?.({ loaded: 5, total: 10, percent: 50, bytesPerSecond: 1 }));
+    act(() => {
+      window.dispatchEvent(new Event("offline"));
+    });
+    expect(await screen.findByText("Upload interrupted at 50%. Retry?")).toBeInTheDocument();
+    expect(upload.abort).toHaveBeenCalledOnce();
+    await act(async () => upload.reject(new UploadAbortedError()));
+    expect(screen.getByText("Upload interrupted at 50%. Retry?")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
+  });
+
+  it("going_offline_without_an_upload_does_nothing", async () => {
+    server.use(http.get(listUrl, () => HttpResponse.json({ items: [] })));
+    renderWithProviders(<CollectionsPage />);
+    await screen.findByText(/No collections yet/);
+    act(() => {
+      window.dispatchEvent(new Event("offline"));
+    });
+    expect(screen.queryByTestId("upload-row")).not.toBeInTheDocument();
   });
 
   it("falls_back_to_a_generic_message_for_unknown_errors", async () => {

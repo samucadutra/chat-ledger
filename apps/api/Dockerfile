@@ -34,7 +34,11 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # ---------------------------------------------------------------- runtime
 FROM ${PYTHON_IMAGE} AS runtime
 ENV PATH=/app/.venv/bin:$PATH PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 TZ=UTC
-RUN useradd --uid 10001 --create-home --shell /usr/sbin/nologin chatledger \
+# procps provides `ps`, used to sample the uvicorn RSS during upload memory checks.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends procps \
+ && rm -rf /var/lib/apt/lists/* \
+ && useradd --uid 10001 --create-home --shell /usr/sbin/nologin chatledger \
  && mkdir -p /data/blobs && chown chatledger:chatledger /data/blobs
 WORKDIR /app
 COPY --from=deps /app/.venv /app/.venv

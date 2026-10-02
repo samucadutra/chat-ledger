@@ -6,6 +6,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from pydantic import BaseModel, Field
+from starlette.requests import ClientDisconnect
 
 from chatledger_api.main import create_app
 from chatledger_core.config import Settings
@@ -37,6 +38,10 @@ def app(make_settings: Callable[..., Settings]) -> FastAPI:  # no DB needed
     @app.get("/api/v1/_test/missing")
     def missing() -> None:
         raise NotFoundError("Matter not found.")
+
+    @app.get("/api/v1/_test/disconnect")
+    def disconnect() -> None:
+        raise ClientDisconnect
 
     @app.get("/api/v1/_test/boom")
     def boom() -> None:
@@ -123,3 +128,9 @@ def test_lazy_module_app(monkeypatch: pytest.MonkeyPatch) -> None:
 
     with pytest.raises(AttributeError):
         main_module.__getattr__("nope")
+
+
+def test_client_disconnect_is_not_an_unhandled_error(client: TestClient) -> None:
+    res = client.get("/api/v1/_test/disconnect")
+    assert res.status_code == 499
+    assert res.json()["error"]["code"] == "CLIENT_DISCONNECTED"

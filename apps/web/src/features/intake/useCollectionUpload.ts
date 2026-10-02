@@ -18,19 +18,36 @@ export function useCollectionUpload(matterId: string) {
   const [state, setState] = useState<UploadState>({ kind: "idle" });
   const handle = useRef<UploadHandle | null>(null);
   const lastFile = useRef<File | null>(null);
+  const lastPercent = useRef(0);
 
   useEffect(() => () => handle.current?.abort(), []);
+
+  // A dropped connection is reported by the browser immediately; do not wait for the socket to time out.
+  useEffect(() => {
+    function onOffline() {
+      const file = lastFile.current;
+      if (!handle.current || !file) return;
+      setState({ kind: "interrupted", filename: file.name, percent: lastPercent.current });
+      handle.current.abort();
+    }
+    window.addEventListener("offline", onOffline);
+    return () => window.removeEventListener("offline", onOffline);
+  }, []);
 
   const start = useCallback(
     async (file: File) => {
       lastFile.current = file;
+      lastPercent.current = 0;
       setState({
         kind: "uploading",
         filename: file.name,
         progress: { loaded: 0, total: file.size, percent: 0, bytesPerSecond: 0 },
       });
       const upload = uploadCollection(matterId, file, {
-        onProgress: (progress) => setState({ kind: "uploading", filename: file.name, progress }),
+        onProgress: (progress) => {
+          lastPercent.current = progress.percent;
+          setState({ kind: "uploading", filename: file.name, progress });
+        },
         onUploaded: () => setState({ kind: "verifying", filename: file.name }),
       });
       handle.current = upload;
@@ -40,7 +57,8 @@ export function useCollectionUpload(matterId: string) {
         await queryClient.invalidateQueries({ queryKey: matterKeys.all });
         setState({ kind: "idle" });
       } catch (error) {
-        if (error instanceof UploadAbortedError) setState({ kind: "idle" });
+        if (error instanceof UploadAbortedError)
+          setState((prev) => (prev.kind === "interrupted" ? prev : { kind: "idle" }));
         else if (error instanceof UploadInterruptedError)
           setState({ kind: "interrupted", filename: file.name, percent: error.percent });
         else

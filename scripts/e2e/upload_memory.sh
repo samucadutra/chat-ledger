@@ -11,20 +11,22 @@ LIMIT_KB=$((100 * 1024))
 [[ -f "$FIXTURE" ]] || { echo "missing $FIXTURE (run: make fixtures-intake)" >&2; exit 2; }
 
 rss_kb() {
-  # RSS (KB) of the uvicorn worker: the largest python process in the api container.
-  docker compose exec -T api ps -eo rss=,args= | grep -i uvicorn | awk '{print $1}' | sort -n | tail -1
+  # RSS (KB) of the uvicorn worker (the container's only python process), not the container.
+  docker compose exec -T api ps -eo rss=,args= | grep -i '[u]vicorn' | awk '{print $1}' | sort -n | tail -1
 }
 
 name="Upload memory check $(date +%s)"
+json_field() { sed -E "s/.*\"$1\": ?\"([^\"]+)\".*/\1/"; }
+
 matter_id=$(curl -fsS -X POST "$API_URL/api/v1/matters" -H 'Content-Type: application/json' \
-  -d "{\"name\": \"$name\"}" | python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])')
+  -d "{\"name\": \"$name\"}" | json_field id)
 
 idle=$(rss_kb)
 peak=$idle
 out=$(mktemp)
 curl -fsS -X POST "$API_URL/api/v1/matters/$matter_id/collections" \
   -H 'Content-Type: application/zip' -H "X-Filename: $(basename "$FIXTURE")" \
-  --data-binary "@$FIXTURE" -o "$out" &
+  -T "$FIXTURE" -o "$out" &
 curl_pid=$!
 while kill -0 "$curl_pid" 2>/dev/null; do
   now=$(rss_kb || echo 0)
@@ -33,7 +35,7 @@ while kill -0 "$curl_pid" 2>/dev/null; do
 done
 wait "$curl_pid"
 
-sha=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["sha256"])' "$out")
+sha=$(json_field sha256 < "$out")
 expected=$(sha256sum "$FIXTURE" | cut -d' ' -f1)
 growth=$((peak - idle))
 mode=$(docker compose exec -T api stat -c '%a' "/data/blobs/sha256/${sha:0:2}/$sha.zip" | tr -d '\r')

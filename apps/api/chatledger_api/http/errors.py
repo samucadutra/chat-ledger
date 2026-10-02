@@ -11,6 +11,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
+from starlette.requests import ClientDisconnect
 from starlette.responses import Response
 
 from chatledger_core.domain._shared.errors import DomainError
@@ -109,6 +110,17 @@ async def _http_error(request: Request, exc: Exception) -> JSONResponse:
     return _envelope(request, status, code, message, headers=headers)
 
 
+async def _client_disconnect(request: Request, exc: Exception) -> JSONResponse:
+    # The client went away mid-request (e.g. an aborted upload); nobody reads this response.
+    _log.info(
+        "http.client_disconnect",
+        request_id=_request_id(request),
+        method=request.method,
+        path=request.url.path,
+    )
+    return _envelope(request, 499, "CLIENT_DISCONNECTED", "Client closed the connection.")
+
+
 async def _unhandled_error(request: Request, exc: Exception) -> JSONResponse:
     rid = _request_id(request)
     _log.error(
@@ -130,4 +142,5 @@ def install_error_handlers(app: FastAPI) -> None:
     app.add_exception_handler(DomainError, _domain_error)
     app.add_exception_handler(RequestValidationError, _validation_error)
     app.add_exception_handler(StarletteHTTPException, _http_error)
+    app.add_exception_handler(ClientDisconnect, _client_disconnect)
     app.add_exception_handler(Exception, _unhandled_error)
