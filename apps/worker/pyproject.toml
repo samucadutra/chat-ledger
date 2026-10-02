@@ -8,6 +8,7 @@ dependencies = ["chatledger-core"]
 [project.scripts]
 chatledger-worker = "chatledger_worker.main:main"
 chatledger-admin = "chatledger_worker.admin_cli:main"
+chatledger-gen = "chatledger_worker.gen_cli:main"
 
 [tool.uv.sources]
 chatledger-core = { workspace = true }

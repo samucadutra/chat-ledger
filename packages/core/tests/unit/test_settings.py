@@ -62,3 +62,36 @@ def test_invalid_value_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_get_settings_is_cached() -> None:
     get_settings.cache_clear()
     assert get_settings() is get_settings()
+
+
+def test_generator_settings_defaults_and_blank_passthrough(monkeypatch: pytest.MonkeyPatch) -> None:
+    for key in (
+        "GENERATOR_BYTES_PER_MESSAGE",
+        "GENERATOR_DISK_HEADROOM",
+        "GENERATOR_PROGRESS_EVERY",
+        "GENERATOR_FREE_SPACE_OVERRIDE_BYTES",
+        "GENERATOR_TEST_DELAY_MS_PER_CONVERSATION",
+        "GENERATOR_TEST_FAIL_ALWAYS",
+    ):
+        monkeypatch.delenv(key, raising=False)
+    s = Settings()
+    assert (s.generator_bytes_per_message, s.generator_disk_headroom) == (350, 1.5)
+    assert s.generator_progress_every == 5000
+    assert s.generator_free_space_override_bytes is None
+    assert s.generator_test_delay_ms_per_conversation == 0
+    assert s.generator_test_fail_always is False
+    # docker compose passes unset knobs as empty strings
+    monkeypatch.setenv("GENERATOR_FREE_SPACE_OVERRIDE_BYTES", "")
+    monkeypatch.setenv("GENERATOR_TEST_DELAY_MS_PER_CONVERSATION", "")
+    monkeypatch.setenv("GENERATOR_TEST_FAIL_ALWAYS", "")
+    blank = Settings()
+    assert blank.generator_free_space_override_bytes is None
+    assert blank.generator_test_delay_ms_per_conversation == 0
+    assert blank.generator_test_fail_always is False
+    monkeypatch.setenv("GENERATOR_FREE_SPACE_OVERRIDE_BYTES", "1000000")
+    monkeypatch.setenv("GENERATOR_TEST_FAIL_ALWAYS", "true")
+    monkeypatch.setenv("GENERATOR_TEST_DELAY_MS_PER_CONVERSATION", "100")
+    knobs = Settings()
+    assert knobs.generator_free_space_override_bytes == 1_000_000
+    assert knobs.generator_test_fail_always is True
+    assert knobs.generator_test_delay_ms_per_conversation == 100
