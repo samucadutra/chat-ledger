@@ -77,6 +77,75 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/matters/{matter_id}/collections/{collection_id}/ground-truth": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download ground truth */
+        get: operations["download_ground_truth_api_v1_matters__matter_id__collections__collection_id__ground_truth_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/matters/{matter_id}/generations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List generations */
+        get: operations["list_generations_api_v1_matters__matter_id__generations_get"];
+        put?: never;
+        /** Request a synthetic export */
+        post: operations["create_generation_api_v1_matters__matter_id__generations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/matters/{matter_id}/generations/{generation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get generation */
+        get: operations["get_generation_api_v1_matters__matter_id__generations__generation_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/matters/{matter_id}/generations/{generation_id}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Retry a failed generation */
+        post: operations["retry_generation_api_v1_matters__matter_id__generations__generation_id__retry_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -98,6 +167,22 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** CollectionGenerationOut */
+        CollectionGenerationOut: {
+            /** Has Ground Truth */
+            has_ground_truth: boolean;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Preset */
+            preset: string;
+            /** Profile */
+            profile: string;
+            /** Seed */
+            seed: number;
+        };
         /** CollectionListOut */
         CollectionListOut: {
             /** Items */
@@ -118,6 +203,7 @@ export interface components {
             export_date_from: string | null;
             /** Export Date To */
             export_date_to: string | null;
+            generation?: components["schemas"]["CollectionGenerationOut"] | null;
             /**
              * Id
              * Format: uuid
@@ -139,12 +225,88 @@ export interface components {
             /** Source */
             source: string;
         };
+        /**
+         * CreateGenerationRequest
+         * @description Raw input; every rule (and its message) lives in the domain validation.
+         */
+        CreateGenerationRequest: {
+            /** Conversations */
+            conversations?: number | null;
+            /** Messages */
+            messages?: number | null;
+            /** Overlap Of Collection Id */
+            overlap_of_collection_id?: string | null;
+            /** Preset */
+            preset?: string | null;
+            /** Profile */
+            profile?: string | null;
+            /** Seed */
+            seed?: number | null;
+        };
         /** CreateMatterRequest */
         CreateMatterRequest: {
             /** Description */
             description?: string | null;
             /** Name */
             name: string;
+        };
+        /** GenerationErrorOut */
+        GenerationErrorOut: {
+            /** Code */
+            code: string;
+            /** Message */
+            message: string;
+        };
+        /** GenerationListOut */
+        GenerationListOut: {
+            /** Items */
+            items: components["schemas"]["GenerationOut"][];
+        };
+        /** GenerationOut */
+        GenerationOut: {
+            /** Collection Id */
+            collection_id: string | null;
+            /** Conversations */
+            conversations: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            error: components["schemas"]["GenerationErrorOut"] | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Job Id */
+            job_id: string | null;
+            /**
+             * Matter Id
+             * Format: uuid
+             */
+            matter_id: string;
+            /** Messages */
+            messages: number;
+            /** Overlap Of Collection Id */
+            overlap_of_collection_id: string | null;
+            /** Preset */
+            preset: string;
+            /** Profile */
+            profile: string;
+            /** Progress Messages */
+            progress_messages: number;
+            /** Seed */
+            seed: number;
+            /** State */
+            state: string;
+            /** Total Messages */
+            total_messages: number;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -399,6 +561,168 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CollectionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    download_ground_truth_api_v1_matters__matter_id__collections__collection_id__ground_truth_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                matter_id: string;
+                collection_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The ground-truth file */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_generations_api_v1_matters__matter_id__generations_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                matter_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GenerationListOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_generation_api_v1_matters__matter_id__generations_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                matter_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateGenerationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GenerationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_generation_api_v1_matters__matter_id__generations__generation_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                matter_id: string;
+                generation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GenerationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    retry_generation_api_v1_matters__matter_id__generations__generation_id__retry_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                matter_id: string;
+                generation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GenerationOut"];
                 };
             };
             /** @description Validation Error */

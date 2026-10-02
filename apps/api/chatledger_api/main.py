@@ -16,6 +16,7 @@ from chatledger_api.http.errors import (
     install_error_handlers,
 )
 from chatledger_api.http.routes import health, v1
+from chatledger_api.http.routes.generations import GenerationServices
 from chatledger_api.http.routes.matters import IntakeServices
 from chatledger_api.janitor import Janitor
 from chatledger_core import __version__
@@ -23,11 +24,18 @@ from chatledger_core.config import Settings, get_settings
 from chatledger_core.domain.intake.archive import ArchiveLimits
 from chatledger_core.infra.blobstore.fs_blob_store import FsBlobStore
 from chatledger_core.infra.db.engine import make_engine
+from chatledger_core.infra.generator.pg_generation_repository import PgGenerationRepository
 from chatledger_core.infra.git_sha import resolve_git_sha
 from chatledger_core.infra.heartbeat.pg_heartbeat import PgHeartbeat
 from chatledger_core.infra.intake.pg_unit_of_work import PgIntakeUnitOfWork
 from chatledger_core.infra.intake.zip_archive_inspector import ZipArchiveInspector
 from chatledger_core.infra.logging import configure_logging
+from chatledger_core.infra.queue.pg_job_queue import PgJobQueue
+from chatledger_core.usecase.generator.get_generation import GetGeneration
+from chatledger_core.usecase.generator.get_ground_truth import GetGroundTruth
+from chatledger_core.usecase.generator.list_generations import ListGenerations
+from chatledger_core.usecase.generator.request_generation import RequestGeneration
+from chatledger_core.usecase.generator.retry_generation import RetryGeneration
 from chatledger_core.usecase.intake.create_matter import CreateMatter
 from chatledger_core.usecase.intake.get_matter import GetMatter
 from chatledger_core.usecase.intake.list_collections import GetCollection, ListCollections
@@ -65,6 +73,27 @@ def build_intake_services(settings: Settings, engine: Engine) -> IntakeServices:
     )
 
 
+def build_generation_services(settings: Settings, engine: Engine) -> GenerationServices:
+    def uow_factory() -> PgIntakeUnitOfWork:
+        return PgIntakeUnitOfWork(engine)
+
+    generations = PgGenerationRepository(engine)
+    queue = PgJobQueue(
+        engine,
+        lease_seconds=settings.job_lease_seconds,
+        max_attempts=settings.job_max_attempts,
+        retry_backoff_seconds=settings.job_retry_backoff_seconds,
+        stale_owner_seconds=settings.worker_active_window_seconds,
+    )
+    return GenerationServices(
+        request_generation=RequestGeneration(uow_factory, generations, queue),
+        list_generations=ListGenerations(uow_factory, generations),
+        get_generation=GetGeneration(uow_factory, generations),
+        retry_generation=RetryGeneration(uow_factory, generations, queue),
+        get_ground_truth=GetGroundTruth(uow_factory, generations, FsBlobStore(settings.blob_root)),
+    )
+
+
 def create_app(settings: Settings | None = None, *, engine: Engine | None = None) -> FastAPI:
     settings = settings or get_settings()
     configure_logging(settings.log_level, service="api")
@@ -94,6 +123,7 @@ def create_app(settings: Settings | None = None, *, engine: Engine | None = None
     app.state.engine = engine
     app.state.settings = settings
     app.state.intake = intake
+    app.state.generations = build_generation_services(settings, engine)
     app.state.health_deps = health.HealthDeps(
         engine=engine,
         heartbeat=PgHeartbeat(engine),

@@ -63,6 +63,14 @@ class MatterListOut(BaseModel):
     items: list[MatterOut]
 
 
+class CollectionGenerationOut(BaseModel):
+    id: UUID
+    seed: int
+    preset: str
+    profile: str
+    has_ground_truth: bool
+
+
 class CollectionOut(BaseModel):
     id: UUID
     matter_id: UUID
@@ -76,6 +84,7 @@ class CollectionOut(BaseModel):
     export_date_to: date | None
     root_prefix: str
     added_at: datetime
+    generation: CollectionGenerationOut | None = None
 
 
 class CollectionListOut(BaseModel):
@@ -94,6 +103,17 @@ def _matter_out(m: MatterSummary) -> MatterOut:
 
 
 def _collection_out(c: Collection) -> CollectionOut:
+    generation = (
+        None
+        if c.generation is None
+        else CollectionGenerationOut(
+            id=c.generation.id,
+            seed=c.generation.seed,
+            preset=c.generation.preset,
+            profile=c.generation.profile,
+            has_ground_truth=c.generation.has_ground_truth,
+        )
+    )
     return CollectionOut(
         id=c.id,
         matter_id=c.matter_id,
@@ -107,6 +127,7 @@ def _collection_out(c: Collection) -> CollectionOut:
         export_date_to=c.export_date_to,
         root_prefix=c.root_prefix,
         added_at=c.added_at,
+        generation=generation,
     )
 
 

@@ -9,6 +9,7 @@ from sqlalchemy import Connection, Engine, RowMapping, text
 from chatledger_core.domain.intake.collection import (
     BlobRef,
     Collection,
+    CollectionGeneration,
     CollectionSource,
     NewCollection,
 )
@@ -20,7 +21,25 @@ _COLUMNS = (
 )
 
 
+_JOINED_COLUMNS = (
+    "c.id, c.matter_id, c.blob_sha256, c.original_filename, c.size_bytes, c.source, "
+    "c.entry_count, c.conversation_count, c.export_date_from, c.export_date_to, "
+    "c.root_prefix, c.added_at, g.id AS gen_id, g.seed AS gen_seed, g.preset AS gen_preset, "
+    "g.profile AS gen_profile, (g.ground_truth_sha256 IS NOT NULL) AS gen_has_ground_truth"
+)
+_JOINED_FROM = "collection c LEFT JOIN generation g ON g.collection_id = c.id"
+
+
 def _row_to_collection(row: RowMapping) -> Collection:
+    generation = None
+    if row.get("gen_id") is not None:
+        generation = CollectionGeneration(
+            id=row["gen_id"],
+            seed=int(row["gen_seed"]),
+            preset=row["gen_preset"],
+            profile=row["gen_profile"],
+            has_ground_truth=bool(row["gen_has_ground_truth"]),
+        )
     return Collection(
         id=row["id"],
         matter_id=row["matter_id"],
@@ -34,6 +53,7 @@ def _row_to_collection(row: RowMapping) -> Collection:
         export_date_to=row["export_date_to"],
         root_prefix=row["root_prefix"],
         added_at=row["added_at"],
+        generation=generation,
     )
 
 
@@ -108,14 +128,18 @@ class PgCollectionRepository(TransactionalAdapter):
 
     def list_for_matter(self, matter_id: UUID) -> list[Collection]:
         stmt = text(
-            f"SELECT {_COLUMNS} FROM collection WHERE matter_id = :matter_id ORDER BY added_at, id"
+            f"SELECT {_JOINED_COLUMNS} FROM {_JOINED_FROM} WHERE c.matter_id = :matter_id "
+            "ORDER BY c.added_at, c.id"
         )
         with self._tx() as conn:
             rows = conn.execute(stmt, {"matter_id": matter_id}).mappings().all()
         return [_row_to_collection(r) for r in rows]
 
     def get(self, matter_id: UUID, collection_id: UUID) -> Collection | None:
-        stmt = text(f"SELECT {_COLUMNS} FROM collection WHERE matter_id = :matter_id AND id = :id")
+        stmt = text(
+            f"SELECT {_JOINED_COLUMNS} FROM {_JOINED_FROM} "
+            "WHERE c.matter_id = :matter_id AND c.id = :id"
+        )
         with self._tx() as conn:
             row = (
                 conn.execute(stmt, {"matter_id": matter_id, "id": collection_id}).mappings().first()
