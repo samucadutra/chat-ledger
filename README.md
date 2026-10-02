@@ -145,6 +145,35 @@ and a janitor in the API removes `tmp/*.part` files older than 10 minutes.
 Run `make fixtures-intake` to generate the large fixtures used by the upload
 memory check (`scripts/e2e/upload_memory.sh`).
 
+## Synthetic Slack export generator
+
+`chatledger-gen` writes a deterministic Slack workspace export and a machine-readable ground
+truth. The same seed and parameters always give byte-identical ZIP and ground-truth files.
+
+```bash
+uv run chatledger-gen --seed 42 --preset small --profile default --out ./out
+# or inside the stack: docker compose exec worker chatledger-gen --seed 42 --preset small --out /tmp/out
+```
+
+- `--preset small|medium|large|custom` (`--messages` and `--conversations` only with `custom`).
+- `--profile clean|default|stress` sets the injected anomaly rates.
+- `--overlap-of <seed> [--overlap-days-pct 30]` writes a re-delivery of an earlier export whose
+  overlapping day files are byte-identical; those records are listed as `duplicate_source`.
+- Output: `<out>/slack-export-<seed>-<preset>-<profile>.zip` and `<out>/ground-truth-<seed>.json`.
+  Progress goes to stderr every 10,000 messages; stdout ends with `ZIP <path> sha256:<hex>` and
+  `GROUND_TRUTH <path> sha256:<hex>`. Exit codes: 0 ok, 2 invalid arguments, 3 not enough disk
+  space, 4 I/O error.
+- `scripts/e2e/generator_perf.sh` checks the `large` preset (under 5 minutes, under 500 MB RSS).
+
+In the UI, the Collections tab has a **Generate synthetic export** button. The request becomes a
+`generate` job on the queue; when it finishes the ZIP is registered as a collection with source
+`generator`, shown with a "Synthetic" badge and a **Download ground truth** link
+(`GET /api/v1/matters/{id}/collections/{collection_id}/ground-truth`). Failed generations can be
+retried, except duplicates of an existing collection.
+
+Test-only settings (inert by default): `GENERATOR_FREE_SPACE_OVERRIDE_BYTES`,
+`GENERATOR_TEST_DELAY_MS_PER_CONVERSATION` and `GENERATOR_TEST_FAIL_ALWAYS`.
+
 ## Architecture Decision Records
 
 | ADR | Decision |

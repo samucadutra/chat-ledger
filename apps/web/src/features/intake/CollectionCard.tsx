@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import type { Collection } from "./api";
+import { groundTruthUrl } from "@/features/generator/api";
 import { formatBytes, formatDate, formatDateTime } from "./format";
 
 export function CollectionCard({ collection }: { collection: Collection }) {
@@ -32,7 +33,11 @@ export function CollectionCard({ collection }: { collection: Collection }) {
       <header className="flex flex-wrap items-baseline justify-between gap-2">
         <h3 className="min-w-0 truncate text-[15px] font-semibold">{collection.original_filename}</h3>
         <span className="cl-label border border-rule px-1.5 py-0.5">
-          {collection.source === "generator" ? "Generated" : "Uploaded"}
+          {collection.generation
+            ? `Synthetic · seed ${collection.generation.seed} · ${collection.generation.profile}`
+            : collection.source === "generator"
+              ? "Generated"
+              : "Uploaded"}
         </span>
       </header>
       <dl className="mt-3 grid grid-cols-1 gap-x-8 gap-y-2 text-[13px] sm:grid-cols-3">
@@ -66,6 +71,17 @@ export function CollectionCard({ collection }: { collection: Collection }) {
           {copied ? "Copied" : "Copy"}
         </Button>
       </div>
+      {collection.generation?.has_ground_truth ? (
+        <div className="mt-3 border-t border-rule pt-3 text-[13px]">
+          <a
+            href={groundTruthUrl(collection.matter_id, collection.id)}
+            download={`ground-truth-${collection.generation.seed}.json`}
+            className="font-medium text-accent underline"
+          >
+            Download ground truth
+          </a>
+        </div>
+      ) : null}
     </article>
   );
 }

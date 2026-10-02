@@ -12,4 +12,7 @@ export const healthyBody = {
 };
 
 /** Default handlers: a healthy API. Tests override per case with `server.use(...)`. */
-export const handlers = [http.get(`${API_URL}/health`, () => HttpResponse.json(healthyBody))];
+export const handlers = [
+  http.get(`${API_URL}/health`, () => HttpResponse.json(healthyBody)),
+  http.get(`${API_URL}/api/v1/matters/:matterId/generations`, () => HttpResponse.json({ items: [] })),
+];
