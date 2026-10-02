@@ -5,11 +5,11 @@ from chatledger_core.infra.db.engine import current_revision, ping, session_scop
 
 
 def test_head_is_intake() -> None:
-    assert migrations.head_revision() == "0002_intake"
+    assert migrations.head_revision() == "0003_generation"
 
 
 def test_upgrade_downgrade_round_trip(engine: Engine, test_database_url: str) -> None:
-    assert current_revision(engine) == "0002_intake"
+    assert current_revision(engine) == "0003_generation"
     migrations.downgrade(test_database_url, "base")
     try:
         assert current_revision(engine) is None
@@ -17,7 +17,7 @@ def test_upgrade_downgrade_round_trip(engine: Engine, test_database_url: str) ->
             assert conn.execute(text("SELECT to_regclass('public.job')")).scalar() is None
     finally:
         migrations.upgrade(test_database_url, "head")
-    assert current_revision(engine) == "0002_intake"
+    assert current_revision(engine) == "0003_generation"
     with engine.connect() as conn:
         tables = {
             row[0]
@@ -25,7 +25,7 @@ def test_upgrade_downgrade_round_trip(engine: Engine, test_database_url: str) ->
                 text("SELECT tablename FROM pg_tables WHERE schemaname = 'public'")
             )
         }
-    assert {"job", "audit_event", "worker_heartbeat"} <= tables
+    assert {"job", "audit_event", "worker_heartbeat", "generation"} <= tables
 
 
 def test_indexes_and_triggers_exist(engine: Engine) -> None:
@@ -41,6 +41,8 @@ def test_indexes_and_triggers_exist(engine: Engine) -> None:
         "ix_audit_entity",
         "ix_audit_occurred_at",
         "ix_worker_heartbeat_last_seen",
+        "ix_generation_matter_created",
+        "uq_generation_collection",
     } <= indexes
     assert {"trg_audit_event_no_update_delete", "trg_audit_event_no_truncate"} <= triggers
 

@@ -86,6 +86,7 @@ def audit_seed(db_conn: Connection) -> AuditEvent:
 
 def _purge_intake(engine: Engine) -> None:
     with engine.begin() as conn:
+        conn.execute(text("DELETE FROM generation"))
         conn.execute(text("DELETE FROM collection"))
         conn.execute(text("DELETE FROM blob"))
         conn.execute(text("DELETE FROM matter"))

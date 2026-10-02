@@ -155,3 +155,36 @@ def make_synthetic_collection(engine: Engine, matter_id: UUID, index: int) -> No
             ),
             {"m": matter_id, "s": sha, "f": f"filler-{index}.zip"},
         )
+
+
+# --------------------------------------------------------------------------- generator
+
+
+def make_generation_services(  # type: ignore[no-untyped-def]
+    engine: Engine, blob_root: Path, *, max_collections: int = 20, **run_kwargs: Any
+):
+    """Real RunGeneration + repository + use cases wired like the composition roots."""
+    from chatledger_core.infra.generator.disk import DiskProbe
+    from chatledger_core.infra.generator.ground_truth_writer import GroundTruthWriter
+    from chatledger_core.infra.generator.pg_generation_repository import PgGenerationRepository
+    from chatledger_core.infra.generator.zip_export_writer import ZipExportWriter
+    from chatledger_core.usecase.generator.generate_export import GenerateExport
+    from chatledger_core.usecase.generator.request_generation import RequestGeneration
+    from chatledger_core.usecase.generator.run_generation import RunGeneration
+
+    register, store = make_register(engine, blob_root, max_collections=max_collections)
+    repo = PgGenerationRepository(engine)
+    probe = DiskProbe(run_kwargs.pop("free_space_override", None))
+    run = RunGeneration(
+        uow_factory=lambda: PgIntakeUnitOfWork(engine),
+        generations=repo,
+        register_collection=register,
+        blob_store=store,
+        generate_export=GenerateExport(probe),
+        tmp_dir=store.tmp_dir,
+        zip_sink_factory=ZipExportWriter,
+        truth_sink_factory=GroundTruthWriter,
+        **run_kwargs,
+    )
+    request = RequestGeneration(lambda: PgIntakeUnitOfWork(engine), repo, queue_for(engine))
+    return run, request, repo, store

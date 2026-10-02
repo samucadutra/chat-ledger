@@ -65,6 +65,18 @@ class BlobStore(Protocol):
 
     def exists(self, sha256: str) -> bool: ...
 
+    def ground_truth_path_for(self, sha256: str) -> Path:
+        """Where the generator's ground truth for the blob with this digest is stored."""
+        ...
+
+    def put_ground_truth(self, sha256: str, staged_path: Path) -> Path:
+        """Move a staged ground-truth file beside its blob, read-only (idempotent)."""
+        ...
+
+    def remove_ground_truth_if_unreferenced(self, sha256: str) -> bool:
+        """Delete the ground truth when no ZIP blob with that digest exists."""
+        ...
+
 
 class ArchiveInspector(Protocol):
     def read_entries(self, path: Path) -> list[ArchiveEntry]:
