@@ -2,6 +2,7 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
+import { CurrentMatterProvider } from "@/components/shell/CurrentMatter";
 import { ToastProvider } from "@/components/ui/Toast";
 import { TooltipProvider } from "@/components/ui/Tooltip";
 
@@ -20,7 +21,9 @@ export function Providers({ children }: { children: ReactNode }) {
   return (
     <QueryClientProvider client={client}>
       <TooltipProvider delayDuration={300}>
-        <ToastProvider>{children}</ToastProvider>
+        <ToastProvider>
+          <CurrentMatterProvider>{children}</CurrentMatterProvider>
+        </ToastProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );

@@ -2,6 +2,7 @@ import createClient from "openapi-fetch";
 import { API_URL } from "@/lib/config";
 import type { components, paths } from "./schema";
 
+export type { components };
 export type HealthResponse = components["schemas"]["HealthResponse"];
 
 /** The uniform API error envelope: `{ error: { code, message, details } }`. */

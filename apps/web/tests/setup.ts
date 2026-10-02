@@ -9,3 +9,12 @@ afterEach(() => {
   server.resetHandlers();
 });
 afterAll(() => server.close());
+
+// jsdom lacks ResizeObserver (used by Radix popper-based components such as Tooltip).
+if (typeof globalThis.ResizeObserver === "undefined") {
+  globalThis.ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  };
+}
