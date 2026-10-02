@@ -41,8 +41,11 @@ extend-exclude = ["tests/fixtures", "apps/web"]
 select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF", "N", "PT"]
 ignore = ["RUF012"]
 
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**" = ["PT018"]
+
 [tool.ruff.lint.isort]
-known-first-party = ["chatledger_core", "chatledger_api", "chatledger_worker", "factories", "check_coverage"]
+known-first-party = ["chatledger_core", "chatledger_api", "chatledger_worker", "factories", "generator_support", "check_coverage"]
 
 # ---------------------------------------------------------------- mypy
 [tool.mypy]
