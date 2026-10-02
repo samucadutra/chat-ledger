@@ -30,6 +30,17 @@ class NewCollection:
 
 
 @dataclass(frozen=True)
+class CollectionGeneration:
+    """The synthetic-generation record a generator collection came from (F03)."""
+
+    id: UUID
+    seed: int
+    preset: str
+    profile: str
+    has_ground_truth: bool
+
+
+@dataclass(frozen=True)
 class Collection:
     id: UUID
     matter_id: UUID
@@ -43,6 +54,7 @@ class Collection:
     export_date_to: date | None
     root_prefix: str
     added_at: datetime
+    generation: CollectionGeneration | None = None
 
 
 @dataclass(frozen=True)

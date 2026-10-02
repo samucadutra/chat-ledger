@@ -46,3 +46,24 @@ describe("CollectionCard", () => {
     expect(screen.getByRole("button", { name: "Copy SHA-256" })).toHaveTextContent("Copy");
   });
 });
+
+describe("CollectionCard synthetic marks", () => {
+  it("shows_badge_and_ground_truth_link_only_for_synthetic", () => {
+    const { rerender } = render(
+      <CollectionCard
+        collection={makeCollection({
+          source: "generator",
+          generation: { id: "g", seed: 4821, preset: "small", profile: "default", has_ground_truth: true },
+        })}
+      />,
+    );
+    expect(screen.getByText("Synthetic · seed 4821 · default")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Download ground truth" })).toHaveAttribute(
+      "href",
+      expect.stringMatching(/\/ground-truth$/),
+    );
+    rerender(<CollectionCard collection={makeCollection()} />);
+    expect(screen.queryByText(/Synthetic/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Download ground truth" })).not.toBeInTheDocument();
+  });
+});

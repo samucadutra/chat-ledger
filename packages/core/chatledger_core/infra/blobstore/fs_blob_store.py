@@ -43,6 +43,46 @@ class FsBlobStore:
     def exists(self, sha256: str) -> bool:
         return self.path_for(sha256).is_file()
 
+    def ground_truth_path_for(self, sha256: str) -> Path:
+        """``<root>/sha256/<2 hex>/<hex>.ground-truth.json``, next to the ZIP blob."""
+        return self._root / f"sha256/{sha256[:2]}/{sha256}.ground-truth.json"
+
+    def put_ground_truth(self, sha256: str, staged_path: Path) -> Path:
+        """Store a staged ground-truth file read-only beside its blob (idempotent)."""
+        target = self.ground_truth_path_for(sha256)
+        if target.exists():
+            staged_path.unlink(missing_ok=True)
+            return target
+        target.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            os.replace(staged_path, target)
+        except OSError as exc:
+            if exc.errno != errno.EXDEV:
+                raise
+            self.tmp_dir.mkdir(parents=True, exist_ok=True)
+            local = self.tmp_dir / f"{uuid.uuid4().hex}.copy"
+            shutil.copyfile(staged_path, local)
+            os.replace(local, target)
+            staged_path.unlink(missing_ok=True)
+        os.chmod(target, 0o444)
+        fd = os.open(target, os.O_RDONLY)
+        try:
+            os.fsync(fd)
+        finally:
+            os.close(fd)
+        _fsync_dir(target.parent)
+        return target
+
+    def remove_ground_truth_if_unreferenced(self, sha256: str) -> bool:
+        """Delete the stored ground truth unless a ZIP blob with that digest exists."""
+        if self.exists(sha256):
+            return False
+        target = self.ground_truth_path_for(sha256)
+        if not target.exists():
+            return False
+        target.unlink()
+        return True
+
     def inspect_staged(self, staged_path: Path, sha256: str | None = None) -> tuple[str, int]:
         size = staged_path.stat().st_size
         if sha256 is not None:

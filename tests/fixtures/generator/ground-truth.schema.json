@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://chatledger.local/schemas/ground-truth.schema.json",
+  "title": "ChatLedger synthetic export ground truth",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generator_version",
+    "seed",
+    "preset",
+    "profile",
+    "messages",
+    "conversations",
+    "overlap",
+    "totals",
+    "anomalies"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "generator_version": { "type": "string" },
+    "seed": { "type": "integer", "minimum": 0, "maximum": 2147483647 },
+    "preset": { "enum": ["small", "medium", "large", "custom"] },
+    "profile": { "enum": ["clean", "default", "stress"] },
+    "messages": { "type": "integer", "minimum": 1 },
+    "conversations": { "type": "integer", "minimum": 1 },
+    "overlap": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "required": ["base_seed", "days_pct"],
+          "properties": {
+            "base_seed": { "type": "integer", "minimum": 0 },
+            "days_pct": { "type": "integer", "minimum": 1, "maximum": 100 }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "totals": {
+      "type": "object",
+      "required": ["message_records", "conversations", "anomalies", "anomalies_by_type"],
+      "properties": {
+        "message_records": { "type": "integer", "minimum": 0 },
+        "conversations": { "type": "integer", "minimum": 1 },
+        "anomalies": { "type": "integer", "minimum": 0 },
+        "anomalies_by_type": {
+          "type": "object",
+          "additionalProperties": { "type": "integer", "minimum": 1 }
+        }
+      },
+      "additionalProperties": false
+    },
+    "anomalies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "anomaly_type",
+          "conversation_id",
+          "message_ts",
+          "source_file",
+          "record_index",
+          "expected_reason_code"
+        ],
+        "properties": {
+          "anomaly_type": {
+            "enum": [
+              "orphan_reply",
+              "edit",
+              "delete",
+              "edit_after_delete",
+              "edit_target_missing",
+              "delete_target_missing",
+              "unknown_subtype",
+              "missing_ts",
+              "invalid_ts",
+              "schema_violation",
+              "malformed_json",
+              "empty_file",
+              "unresolved_user",
+              "unresolved_file",
+              "bot_no_identity",
+              "ts_out_of_range",
+              "duplicate_source"
+            ]
+          },
+          "conversation_id": { "type": "string", "minLength": 1 },
+          "message_ts": { "type": ["string", "null"] },
+          "source_file": { "type": "string", "minLength": 1 },
+          "record_index": { "type": ["integer", "null"], "minimum": 0 },
+          "expected_reason_code": { "type": "string", "pattern": "^[QFX]_[A-Z_]+$" }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

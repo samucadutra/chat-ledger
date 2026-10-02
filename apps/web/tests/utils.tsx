@@ -4,6 +4,7 @@ import type { ReactElement, ReactNode } from "react";
 import { CurrentMatterProvider } from "@/components/shell/CurrentMatter";
 import { TooltipProvider } from "@/components/ui/Tooltip";
 import { API_URL } from "./mocks/handlers";
+import type { Generation } from "@/features/generator/api";
 import type { Collection, Matter } from "@/features/intake/api";
 
 export function renderWithProviders(ui: ReactElement): RenderResult {
@@ -50,8 +51,31 @@ export function makeCollection(overrides: Partial<Collection> = {}): Collection 
     export_date_to: "2024-04-01",
     root_prefix: "",
     added_at: "2026-10-01T19:05:44.120Z",
+    generation: null,
     ...overrides,
   };
 }
 
 export const matterUrl = (id = ACME_ID) => `${API_URL}/api/v1/matters/${id}`;
+
+export function makeGeneration(overrides: Partial<Generation> = {}): Generation {
+  return {
+    id: "5d0e9a1c-2b7f-4a39-8c11-0e6f7a3b9d42",
+    matter_id: ACME_ID,
+    job_id: "a41b0c77-6d2e-43f0-9b8a-1c5e7d3f2a90",
+    state: "running",
+    seed: 4821,
+    preset: "small",
+    profile: "default",
+    messages: 10000,
+    conversations: 50,
+    overlap_of_collection_id: null,
+    progress_messages: 2500,
+    total_messages: 10000,
+    collection_id: null,
+    error: null,
+    created_at: "2026-10-02T15:10:03.120Z",
+    updated_at: "2026-10-02T15:10:05.120Z",
+    ...overrides,
+  };
+}
