@@ -35,6 +35,16 @@ class Settings(BaseSettings):
     heartbeat_interval_seconds: float = Field(default=10, gt=0)
     worker_active_window_seconds: float = Field(default=30, gt=0)
 
+    max_upload_bytes: int = Field(default=2_147_483_648, gt=0)
+    upload_chunk_bytes: int = Field(default=8_388_608, gt=0)
+    upload_stale_seconds: float = Field(default=600, gt=0)
+    upload_janitor_interval_seconds: float = Field(default=60, gt=0)
+    max_collections_per_matter: int = Field(default=20, ge=1)
+    archive_max_entries: int = Field(default=200_000, ge=1)
+    archive_max_uncompressed_bytes: int = Field(default=21_474_836_480, ge=1)
+    archive_max_ratio: int = Field(default=100, ge=1)
+    archive_ratio_min_entry_bytes: int = Field(default=1_048_576, ge=0)
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]

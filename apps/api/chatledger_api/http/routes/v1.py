@@ -2,4 +2,7 @@
 
 from fastapi import APIRouter
 
+from chatledger_api.http.routes import matters
+
 router = APIRouter(prefix="/api/v1")
+router.include_router(matters.router)

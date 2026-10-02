@@ -29,7 +29,7 @@ def test_health_ok(client: TestClient, no_heartbeats: Engine) -> None:
     assert body == {
         "status": "ok",
         "checks": {"database": "ok", "migrations": "ok", "blob_store": "ok"},
-        "migration_revision": "0001_foundation",
+        "migration_revision": "0002_intake",
         "git_sha": GIT_SHA,
         "active_workers": 0,
         "version": "0.1.0",
