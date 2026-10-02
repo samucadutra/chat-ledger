@@ -4,12 +4,12 @@ from chatledger_core.infra.db import migrations
 from chatledger_core.infra.db.engine import current_revision, ping, session_scope
 
 
-def test_head_is_foundation() -> None:
-    assert migrations.head_revision() == "0001_foundation"
+def test_head_is_intake() -> None:
+    assert migrations.head_revision() == "0002_intake"
 
 
 def test_upgrade_downgrade_round_trip(engine: Engine, test_database_url: str) -> None:
-    assert current_revision(engine) == "0001_foundation"
+    assert current_revision(engine) == "0002_intake"
     migrations.downgrade(test_database_url, "base")
     try:
         assert current_revision(engine) is None
@@ -17,7 +17,7 @@ def test_upgrade_downgrade_round_trip(engine: Engine, test_database_url: str) ->
             assert conn.execute(text("SELECT to_regclass('public.job')")).scalar() is None
     finally:
         migrations.upgrade(test_database_url, "head")
-    assert current_revision(engine) == "0001_foundation"
+    assert current_revision(engine) == "0002_intake"
     with engine.connect() as conn:
         tables = {
             row[0]

@@ -82,3 +82,18 @@ def audit_seed(db_conn: Connection) -> AuditEvent:
     from factories import make_audit_event
 
     return make_audit_event(db_conn)
+
+
+def _purge_intake(engine: Engine) -> None:
+    with engine.begin() as conn:
+        conn.execute(text("DELETE FROM collection"))
+        conn.execute(text("DELETE FROM blob"))
+        conn.execute(text("DELETE FROM matter"))
+
+
+@pytest.fixture
+def clean_intake(engine: Engine) -> Iterator[Engine]:
+    """Committed-data tests: start and end with no matter / collection / blob rows."""
+    _purge_intake(engine)
+    yield engine
+    _purge_intake(engine)
