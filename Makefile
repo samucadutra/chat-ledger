@@ -8,10 +8,10 @@ SHELL := /bin/bash
 UV ?= uv
 PNPM ?= pnpm
 WEB_DIR := apps/web
-PY_SRC := packages/core/chatledger_core apps/api/chatledger_api apps/worker/chatledger_worker scripts/check_coverage.py
+PY_SRC := packages/core/chatledger_core apps/api/chatledger_api apps/worker/chatledger_worker scripts/check_coverage.py scripts/fixtures/make_intake_fixtures.py
 
 .PHONY: help up down logs install install-py install-web check lint lint-py lint-web \
-	typecheck typecheck-py typecheck-web test web-test web-build migrate gen-api-types smoke
+	typecheck typecheck-py typecheck-web test web-test web-build migrate gen-api-types smoke fixtures-intake
 
 help: ## List available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-16s %s\n", $$1, $$2}'
@@ -87,3 +87,6 @@ migrate: ## Apply Alembic migrations to DATABASE_URL
 gen-api-types: ## Regenerate the web API client types from the API's OpenAPI schema
 	$(UV) run python -m chatledger_api.openapi > $(WEB_DIR)/openapi.json
 	cd $(WEB_DIR) && OPENAPI_URL=openapi.json $(PNPM) run gen:api
+
+fixtures-intake: ## Write the large intake fixtures to tests/fixtures/intake/generated/ (gitignored)
+	$(UV) run python scripts/fixtures/make_intake_fixtures.py --large

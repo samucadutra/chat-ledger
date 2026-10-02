@@ -31,3 +31,4 @@ apps/web/next-env.d.ts
 .idea/
 .vscode/
 apps/web/openapi.json
+tests/fixtures/intake/generated/

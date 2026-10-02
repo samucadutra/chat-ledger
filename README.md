@@ -91,6 +91,7 @@ make check              # every quality gate CI runs
 | `make web-build` | `next build` |
 | `make migrate` | `alembic upgrade head` against `DATABASE_URL` |
 | `make gen-api-types` | Regenerate `apps/web/src/lib/api/schema.d.ts` from the API's OpenAPI schema |
+| `make fixtures-intake` | Write the large intake fixtures (1.5 GB export, 2 GB + 1 file, 200,001-entry ZIP) to `tests/fixtures/intake/generated/` (gitignored, about 1.6 GB on disk, byte-stable) |
 | `make smoke` | Boot the stack, wait for health, check the web shell and run a `noop` job |
 
 Configuration is read only by `chatledger_core/config.py`; every setting and
@@ -103,6 +104,46 @@ Operator CLI (inside the worker container):
 docker compose exec worker chatledger-admin enqueue-noop --fail-times 1
 docker compose exec worker chatledger-admin job-status <job-id>
 ```
+
+## Matters and collection intake
+
+A **matter** is a named case container (name 3–80 characters, unique
+case-insensitively; description optional, at most 500). A **collection** is one
+Slack export ZIP registered into a matter. Upload with a raw streaming `POST`
+(the body is the ZIP, `Content-Type: application/zip`, original name in
+`X-Filename`, percent-encoded):
+
+```bash
+curl -X POST "http://localhost:8000/api/v1/matters/$MATTER_ID/collections" \
+  -H "Content-Type: application/zip" -H "X-Filename: export.zip" \
+  --data-binary @export.zip
+```
+
+The API hashes the file with SHA-256 while it is written, so memory stays flat.
+The blob lands read-only (`0444`) at `/data/blobs/sha256/<2 hex>/<hash>.zip`.
+Identical bytes added to another matter reuse the same blob.
+
+| Rule | Limit | Error |
+|---|---|---|
+| File size | 2 GiB (`MAX_UPLOAD_BYTES`), checked from `Content-Length` before any byte is read | 413 `FILE_TOO_LARGE` |
+| File name | `X-Filename` ends in `.zip`, at most 255 characters, no `/`, `\` or NUL | 400 `MISSING_FILENAME`, 422 `INVALID_FILENAME` |
+| Same export twice in a matter | Compared by SHA-256 | 409 `COLLECTION_DUPLICATE` |
+| Collections per matter | 20 (`MAX_COLLECTIONS_PER_MATTER`) | 409 `COLLECTION_LIMIT_REACHED` |
+| Valid ZIP | Central directory must parse | 422 `ARCHIVE_REJECTED` (`not_a_zip`) |
+| Safe paths | No `..` component, leading `/` or drive letter (after `\` → `/`) | 422 `ARCHIVE_REJECTED` (`path_escape`) |
+| Entry count | At most 200,000 (`ARCHIVE_MAX_ENTRIES`) | 422 `ARCHIVE_REJECTED` (`entry_count`) |
+| Declared uncompressed size | At most 20 GiB | 422 `ARCHIVE_REJECTED` (`uncompressed_size`) |
+| Compression ratio | At most 100:1 for entries over 1 MiB | 422 `ARCHIVE_REJECTED` (`compression_ratio`) |
+| Slack markers | `users.json` and `channels.json` at the root, or both directly inside one top-level folder | 422 `NOT_A_SLACK_EXPORT` |
+
+Rules run in the order shown and the first failure wins. Nothing is
+decompressed during validation; the worker's streaming parser (F04) enforces
+actual sizes. Every accepted file is audited as `collection.added`, every
+rejection as `collection.rejected`. Partial uploads are deleted on disconnect,
+and a janitor in the API removes `tmp/*.part` files older than 10 minutes.
+
+Run `make fixtures-intake` to generate the large fixtures used by the upload
+memory check (`scripts/e2e/upload_memory.sh`).
 
 ## Architecture Decision Records
 
